@@ -287,8 +287,8 @@ class OptionsParameter implements \ArrayAccess
     public function getOptionValue($option_name)
     {
         if ( ! isset($this->options_mapping[$option_name])) {
-            throw new \InvalidArgumentException(
-                "Trying to get avalue of an option which is not supported: '$option_name'"
+            throw new \UsageException(
+                "Trying to get avalue of an option which is not supported : '$option_name'"
             );
         }
 
