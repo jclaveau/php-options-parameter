@@ -13,7 +13,6 @@ class NumberableObject
 
     public function toDouble($options=[])
     {
-        // $options = OptionsParameter::define([
         $options = OptionsParameter::define([
             'debug' => ['default' => false, true],
         ], $options);
@@ -42,7 +41,8 @@ class NumberableObject
         // $options = OptionsParameter::define([
         $options = OptionsParameter::define([
             'return'        => ['default' => 'double', 'int'],
-            'print_options' => ['default' => false, true,]
+            'print_options' => ['default' => false, true,],
+            'debug'         => ['default' => false, true,],
         ], $options);
 
         if ($options->useOption('print_options')) {
@@ -50,8 +50,11 @@ class NumberableObject
             // exit;
         }
 
-
         $value = $this->toDouble($options);
+
+        if ($options->useOption('debug')) {
+            throw new \Exception('Debug option used');
+        }
 
         switch ($options->useOption('return')) {
             case 'int':
@@ -70,6 +73,7 @@ class NumberableObject
         ], $options);
 
         if ($options->useOption('my_undefined_option')) {
+            return 'my_undefined_option used';
         }
     }
 
@@ -154,7 +158,7 @@ class OptionsParameter_Test extends \PHPUnit_Framework_TestCase
     {
         $obj = new NumberableObject(['lalala']);
         try {
-            $obj->toNumber([]);
+            $obj->toNumber([]); // calls toDouble()
             $this->assertFalse(true, "An exception must already be thrown here");
         }
         catch (\Exception $e) {
@@ -165,12 +169,12 @@ class OptionsParameter_Test extends \PHPUnit_Framework_TestCase
         }
 
         try {
-            $obj->toNumber(['debug']);
+            $obj->toNumber(['debug']); // calls toDouble() that uses the debug option
             $this->assertFalse(true, "An exception must already be thrown here");
         }
         catch (\Exception $e) {
             $this->assertEquals(
-                "exception thrown with debug option",
+                "exception thrown without debug option", // debug option used by toNumber()
                 $e->getMessage()
             );
         }
@@ -184,6 +188,41 @@ class OptionsParameter_Test extends \PHPUnit_Framework_TestCase
 
         try {
             $obj->methodUsingUndefinedOption();
+            $this->assertFalse(true, "An exception must already be thrown here");
+        }
+        catch (\Exception $e) {
+            $this->assertEquals(
+                "Trying to get avalue of an option which is not supported: 'my_undefined_option'",
+                $e->getMessage()
+            );
+        }
+    }
+
+    /**
+     */
+    public function test_use_undefined_set_option()
+    {
+        $obj = new NumberableObject(['lalala']);
+        $return = $obj->methodUsingUndefinedOption(['my_undefined_option' => true]);
+
+        $this->assertEquals(
+            'my_undefined_option used',
+            $return
+        );
+    }
+
+    /**
+     * /
+    public function test_use_of_filtered_option()
+    {
+        $obj = new NumberableObject(['lalala']);
+        // $obj->toNumber(['toDouble() debug']);
+        // $obj->toNumber(['debug' => [ Caller()['function'], '=', '' ]);
+        $obj->toNumber(['debug' => [ Call()['function'], '=', 'toNumber' ]);
+        $obj->toNumber(['debug' => [ Call()['namespace'], '=', 'ElasticSearch' ]);
+        $obj->toNumber(['debug' => [ Args()[0], '=', 'ElasticSearch' ]);
+
+        try {
             $this->assertFalse(true, "An exception must already be thrown here");
         }
         catch (\Exception $e) {

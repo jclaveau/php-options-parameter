@@ -5,10 +5,7 @@ namespace JClaveau;
  * This class provides tools to simplify the use of options in methods, following
  * the parameter object design pattern.
  *
- *
  * @todo UsageExceptions
- * @todo comments|doc example
- * @todo opensource
  */
 class OptionsParameter implements \ArrayAccess
 {
@@ -21,9 +18,6 @@ class OptionsParameter implements \ArrayAccess
     /** @var bool $disabled_destruct_checking  */
     protected $disabled_destruct_checking = !false;
 
-    /** @var bool $disabled_destruct_checking  */
-    // protected $parent_option_values = [];
-
     /**
      * @param array                 $options_mapping
      * @param array|OptionsParameter $options_values
@@ -35,8 +29,12 @@ class OptionsParameter implements \ArrayAccess
         if ($options_mapping)
             $this->supportOptions($options_mapping);
 
-        if ($options_values instanceof static)
-            $options_values = $options_values->getAllOptionValues();
+        if ($options_values instanceof static) {
+            // Options which were defined in the caller are not passed to
+            // the current function. This make the same option definable
+            // at multiple steps of a call stack (and usable only by the first one).
+            $options_values = $options_values->undefinedOptionsValues();
+        }
 
         if (is_array($options_values)) {
             $this->setOptionValues($options_values);
@@ -93,14 +91,14 @@ class OptionsParameter implements \ArrayAccess
      */
     protected function supportOption($option_name, $option_possibilities)
     {
-        if (!is_string($option_name) || !$option_name) {
+        if ( ! is_string($option_name) || ! $option_name) {
             throw new \InvalidArgumentException(
                 "The name of the option must be a non empty string instead of: "
                 .var_export($option_name, true)
             );
         }
 
-        if (!$option_possibilities) {
+        if ( ! $option_possibilities) {
             throw new \InvalidArgumentException(
                 "Missing possibilities for the method option '$option_name': "
                 .var_export($option_possibilities, true)
@@ -113,7 +111,17 @@ class OptionsParameter implements \ArrayAccess
         $option = [
             'name'  => $option_name,
             'used'  => false,
-            'scope' => DebugBacktrace::getCaller(),
+            'defined_at' => DebugBacktrace::getCaller([
+                'ignore_while' => function ($backtrace_call, $backtrace_call_index) {
+                    // print_r($backtrace_call);
+                    return isset($backtrace_call['class'])
+                        && (
+                                $backtrace_call['class'] === __CLASS__
+                            ||  $backtrace_call['class'] === DebugBacktrace::class
+                        )
+                        ;
+                }
+            ]),
         ];
 
         if (is_array($option_possibilities)) {
@@ -186,7 +194,9 @@ class OptionsParameter implements \ArrayAccess
             }
         }
         else {
-            $this->options_mapping[$option_name] = [];
+            $this->options_mapping[$option_name] = [
+                'name' => $option_name,
+            ];
         }
 
         $this->options_mapping[$option_name]['value'] = $value;
@@ -229,6 +239,39 @@ class OptionsParameter implements \ArrayAccess
 
             return true;
         });
+    }
+
+    /**
+     * @return array The list of unused option values
+     */
+    public function listRemainingOptionsValues()
+    {
+
+        $out = [];
+        foreach ($this->listRemainingOptions() as $option_definition) {
+            $out[ $option_definition['name'] ] = $option_definition['value'];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array The list of unused option values
+     */
+    public function undefinedOptionsValues()
+    {
+        $out = [];
+        foreach ($this->options_mapping as $option_definition) {
+            if (isset($option_definition['possibilities']))
+                continue;
+
+            if (!isset($option_definition['name']))
+                \Debug::dumpJson($option_definition, true);
+
+            $out[ $option_definition['name'] ] = $option_definition['value'];
+        }
+
+        return $out;
     }
 
     /**
@@ -287,8 +330,8 @@ class OptionsParameter implements \ArrayAccess
     public function getOptionValue($option_name)
     {
         if ( ! isset($this->options_mapping[$option_name])) {
-            throw new \UsageException(
-                "Trying to get avalue of an option which is not supported : '$option_name'"
+            throw new \InvalidArgumentException(
+                "Trying to get avalue of an option which is not supported: '$option_name'"
             );
         }
 
@@ -355,23 +398,6 @@ class OptionsParameter implements \ArrayAccess
     public function disableDestructChecking()
     {
         $this->disabled_destruct_checking = true;
-    }
-
-    /**
-     * Equivalent of var_dump() but will echo the json_encode value of
-     * the native array.
-     *
-     * This method is useful with the output buffer redirect to a json
-     * stream like on Vuble's ajax apis.
-     *
-     * @return Helper_Table $this
-     */
-    public function dumpJson($exit=false)
-    {
-        $this->disableDestructChecking();
-
-        Debug::dumpJson($this->options_mapping, $exit, 3);
-        return $this;
     }
 
     /**

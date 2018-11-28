@@ -33,10 +33,13 @@ class DebugBacktrace
                 return isset($backtrace_call['class']) && $backtrace_call['class'] === __CLASS__;
             };
         }
+        else {
+            $ignore_while = $options['ignore_while'];
+        }
 
         $out = [];
         foreach (debug_backtrace($flags, null) as $backtrace_call_index => $backtrace_call) {
-            if ($ignore_while($backtrace_call, $backtrace_call_index))
+            if ($ignore_while( $backtrace_call, $backtrace_call_index ))
                 continue;
 
             $backtrace_call['file'] = isset($backtrace_call['file']) ? $backtrace_call['file'] : null;
