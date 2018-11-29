@@ -140,6 +140,7 @@ class DebugBacktrace_Test extends \PHPUnit_Framework_TestCase
                 ),
                 'function' => 'include_once',
                 'call' => 'include_once()',
+                'class' => null,
             ),
             $function_caller
         );

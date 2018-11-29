@@ -30,20 +30,25 @@ class DebugBacktrace
         if ( empty($options['ignore_while']) ) {
             $ignore_while = function ($backtrace_call, $backtrace_call_index) {
                 // print_r($backtrace_call);
-                return isset($backtrace_call['class']) && $backtrace_call['class'] === __CLASS__;
+                return $backtrace_call['class'] === __CLASS__;
             };
         }
         else {
             $ignore_while = $options['ignore_while'];
         }
 
+        // if (!empty($options['debug'])) {
+            // \Debug::dumpJson($limit, true);
+            // \Debug::dumpJson($flags, !true);
+            // \Debug::dumpJson(debug_backtrace($flags, null), !true);
+        // }
+
         $out = [];
         foreach (debug_backtrace($flags, null) as $backtrace_call_index => $backtrace_call) {
-            if ($ignore_while( $backtrace_call, $backtrace_call_index ))
-                continue;
 
-            $backtrace_call['file'] = isset($backtrace_call['file']) ? $backtrace_call['file'] : null;
-            $backtrace_call['line'] = isset($backtrace_call['line']) ? $backtrace_call['line'] : null;
+            $backtrace_call['file']  = isset($backtrace_call['file'])  ? $backtrace_call['file']  : null;
+            $backtrace_call['line']  = isset($backtrace_call['line'])  ? $backtrace_call['line']  : null;
+            $backtrace_call['class'] = isset($backtrace_call['class']) ? $backtrace_call['class'] : null;
 
             $backtrace_call['file'] = static::relativePath($backtrace_call['file']);
 
@@ -58,11 +63,18 @@ class DebugBacktrace
                 $backtrace_call['call'] = '\Closure';
             }
 
+            if ($ignore_while( $backtrace_call, $backtrace_call_index ))
+                continue;
+
             $out[] = $backtrace_call;
 
-            if ( ! --$limit )
+            if ( $limit !== null && ! --$limit )
                 break;
         }
+
+        // if (!empty($options['debug'])) {
+            // \Debug::dumpJson($out, true);
+        // }
 
         return array_reverse($out);
     }
